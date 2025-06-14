@@ -3,21 +3,20 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from cs2_tournament.app.database import Base
 
-# Ассоціативна таблиця для турнірів і команд
 tournament_teams = Table(
     "tournament_teams",
     Base.metadata,
     Column("tournament_id", Integer, ForeignKey("tournaments.id")),
     Column("team_id", Integer, ForeignKey("teams.id")),
 )
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
 
     teams = relationship("Team", back_populates="captain")
-
 
 class Game(Base):
     __tablename__ = "games"
@@ -27,19 +26,18 @@ class Game(Base):
 
     teams = relationship("Team", back_populates="game")
 
-
 class Team(Base):
     __tablename__ = "teams"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     game_id = Column(Integer, ForeignKey("games.id"))
-    captain_id = Column(Integer, ForeignKey("users.id"))  # <== зв’язок з User
-
+    captain_id = Column(Integer, ForeignKey("users.id"))
 
     captain = relationship("User", back_populates="teams")
     players = relationship("Player", back_populates="team", cascade="all, delete")
     game = relationship("Game")
 
+    tournaments = relationship("Tournament", secondary=tournament_teams, back_populates="teams")
 
 class Player(Base):
     __tablename__ = "players"
@@ -49,7 +47,6 @@ class Player(Base):
     team_id = Column(Integer, ForeignKey("teams.id"))
 
     team = relationship("Team", back_populates="players")
-
 
 class Tournament(Base):
     __tablename__ = "tournaments"
@@ -62,7 +59,6 @@ class Tournament(Base):
 
     teams = relationship("Team", secondary=tournament_teams, back_populates="tournaments")
     matches = relationship("Match", back_populates="tournament")
-
 
 class Match(Base):
     __tablename__ = "matches"
@@ -79,7 +75,6 @@ class Match(Base):
     team_a = relationship("Team", foreign_keys=[team_a_id])
     team_b = relationship("Team", foreign_keys=[team_b_id])
     winner = relationship("Team", foreign_keys=[winner_team_id])
-
 
 class TeamRating(Base):
     __tablename__ = "team_ratings"

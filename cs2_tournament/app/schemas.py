@@ -2,9 +2,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-
-from pydantic import BaseModel
-
 class UserCreate(BaseModel):
     username: str
     password: str
@@ -12,11 +9,9 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
-    role: str
 
     class Config:
         orm_mode = True
-
 
 class PlayerBase(BaseModel):
     nickname: str
@@ -30,7 +25,6 @@ class Player(PlayerBase):
 
     class Config:
         orm_mode = True
-
 
 class TeamBase(BaseModel):
     name: str
@@ -47,7 +41,6 @@ class Team(TeamBase):
     class Config:
         orm_mode = True
 
-
 class GameBase(BaseModel):
     name: str
 
@@ -58,8 +51,7 @@ class Game(GameBase):
     id: int
 
     class Config:
-        from_attributes = True
-
+        orm_mode = True
 
 class TournamentBase(BaseModel):
     name: str
@@ -76,7 +68,6 @@ class TournamentOut(TournamentBase):
 
     class Config:
         orm_mode = True
-
 
 class MatchBase(BaseModel):
     tournament_id: int
@@ -95,7 +86,6 @@ class Match(MatchBase):
     class Config:
         orm_mode = True
 
-# --- RATING ---
 class TeamRating(BaseModel):
     team_id: int
     rating: int
