@@ -1,8 +1,12 @@
 from sqlalchemy.orm import Session
 from cs2_tournament.app import models, schemas
 
-def get_game_by_name(db: Session, game_id: int):
+def get_game_by_name(db: Session, name: str):
+    return db.query(models.Game).filter(models.Game.name == name).first()
+
+def get_game_by_id(db: Session, game_id: int):
     return db.query(models.Game).filter(models.Game.id == game_id).first()
+
 
 def create_game(db: Session, game: schemas.GameCreate):
     db_game = models.Game(name=game.name)
@@ -17,7 +21,7 @@ def create_team(db: Session, team: schemas.TeamCreate, captain_id: int):
 
     db_team = models.Team(name=team.name, game_id=team.game_id, captain_id=captain_id)
     db.add(db_team)
-    db.flush()  # Отримаємо ID до створення гравців
+    db.flush()
 
     for player in team.players:
         db_player = models.Player(nickname=player.nickname, team_id=db_team.id)

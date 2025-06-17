@@ -1,15 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
 from sqlalchemy.orm import Session
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from cs2_tournament.app.database import get_db
 from cs2_tournament.app.models import User
 from cs2_tournament.app.schemas import UserCreate, UserOut
 from cs2_tournament.app.security import get_password_hash, verify_password, create_access_token
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import jwt, JWTError
 from cs2_tournament.app.config import settings
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+bearer_scheme = HTTPBearer()
 
 def decode_access_token(token: str):
     try:
@@ -18,8 +19,8 @@ def decode_access_token(token: str):
     except JWTError:
         return None
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    payload = decode_access_token(token)
+def get_current_user(token: HTTPAuthorizationCredentials = Security(bearer_scheme), db: Session = Depends(get_db)) -> User:
+    payload = decode_access_token(token.credentials)
     if not payload:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     username = payload.get("sub")
@@ -48,18 +49,12 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
     return new_user
 
-def authenticate_user(db: Session, username: str, password: str):
-    user = db.query(User).filter(User.username == username).first()
-    if not user or not verify_password(password, user.hashed_password):
-        return None
-    return user
-
 @router.post("/login", tags=["auth"])
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = authenticate_user(db, form_data.username, form_data.password)
-    if not user:
+def login(user: UserCreate, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    access_token = create_access_token(data={"sub": user.username})
+    access_token = create_access_token(data={"sub": db_user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", tags=["auth"], response_model=UserOut)

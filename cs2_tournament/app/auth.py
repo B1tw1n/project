@@ -1,35 +1,24 @@
-# app/auth.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 from .security import get_password_hash, verify_password, create_access_token
-from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from .models import User
-from jose import jwt, JWTError
 from cs2_tournament.app.config import settings
-from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
-from fastapi.security import OAuth2
 
 router = APIRouter()
 
-class OAuth2PasswordBearerWithCookie(OAuth2):
-    def __init__(self, tokenUrl: str):
-        flows = OAuthFlowsModel(password={"tokenUrl": tokenUrl})
-        super().__init__(flows=flows)
+bearer_scheme = HTTPBearer()
 
-oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="auth/login")
-
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(token: HTTPAuthorizationCredentials = Security(bearer_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -39,7 +28,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
-
 
 def authenticate_user(email: str, password: str, db: Session):
     user = db.query(User).filter(User.email == email).first()
@@ -68,10 +56,3 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
-
-def decode_access_token(token: str):
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload
-    except JWTError:
-        return None
